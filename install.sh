@@ -219,27 +219,27 @@ readInstallProtocolType() {
 	currentInstallProtocolType=
 
 	while read -r row; do
-		if echo ${row} | grep -q 02_trojan_TCP_inbounds; then
+		if echo "${row}" | grep -q 02_trojan_TCP_inbounds; then
 			currentInstallProtocolType=${currentInstallProtocolType}'trojan'
 			frontingType=02_trojan_TCP_inbounds
 		fi
-		if echo ${row} | grep -q VLESS_TCP_inbounds; then
+		if echo "${row}" | grep -q VLESS_TCP_inbounds; then
 			currentInstallProtocolType=${currentInstallProtocolType}'0'
 			frontingType=02_VLESS_TCP_inbounds
 		fi
-		if echo ${row} | grep -q VLESS_WS_inbounds; then
+		if echo "${row}" | grep -q VLESS_WS_inbounds; then
 			currentInstallProtocolType=${currentInstallProtocolType}'1'
 		fi
-		if echo ${row} | grep -q trojan_gRPC_inbounds; then
+		if echo "${row}" | grep -q trojan_gRPC_inbounds; then
 			currentInstallProtocolType=${currentInstallProtocolType}'2'
 		fi
-		if echo ${row} | grep -q VMess_WS_inbounds; then
+		if echo "${row}" | grep -q VMess_WS_inbounds; then
 			currentInstallProtocolType=${currentInstallProtocolType}'3'
 		fi
-		if echo ${row} | grep -q 04_trojan_TCP_inbounds; then
+		if echo "${row}" | grep -q 04_trojan_TCP_inbounds; then
 			currentInstallProtocolType=${currentInstallProtocolType}'4'
 		fi
-		if echo ${row} | grep -q VLESS_gRPC_inbounds; then
+		if echo "${row}" | grep -q VLESS_gRPC_inbounds; then
 			currentInstallProtocolType=${currentInstallProtocolType}'5'
 		fi
 	done < <(find ${configPath} -name "*inbounds.json" | awk -F "[.]" '{print $1}')
@@ -372,7 +372,7 @@ cleanUp() {
 	fi
 }
 
-initVar $1
+initVar "$1"
 checkSystem
 checkCPUVendor
 readInstallType
@@ -594,7 +594,7 @@ installWarp(){
 
 	elif [[ "${release}" == "centos" ]]; then
 		${installType} yum-utils >/dev/null 2>&1
-		sudo rpm -ivh http://pkg.cloudflareclient.com/cloudflare-release-el${centosVersion}.rpm >/dev/null 2>&1
+		sudo rpm -ivh "http://pkg.cloudflareclient.com/cloudflare-release-el${centosVersion}.rpm" >/dev/null 2>&1
 	fi
 
 	echoContent green " ---> 安装WARP"
@@ -847,8 +847,8 @@ installTLS() {
 		echoContent green " ---> 检测到证书"
 		checkTLStatus "${tlsDomain}"
 		if [[ "${tlsStatus}" == "已过期" ]]; then
-			rm -rf $HOME/.acme.sh/${tlsDomain}_ecc/*
-			rm -rf /etc/v2ray-agent/tls/${tlsDomain}*
+			rm -rf "$HOME/.acme.sh/${tlsDomain}_ecc/*"
+			rm -rf "/etc/v2ray-agent/tls/${tlsDomain}*"
 			installTLS "$1"
 		else
 			echoContent green " ---> 证书有效"
@@ -2341,9 +2341,10 @@ defaultBase64Code() {
 
 	local subAccount
 	subAccount=${currentHost}_$(echo "${id}_currentHost" | md5sum | awk '{print $1}')
+
 	if [[ "${type}" == "vlesstcp" ]]; then
 
-		if [[ "${coreInstallType}" == "1" ]] && echo ${currentInstallProtocolType} | grep -q 0; then
+		if [[ "${coreInstallType}" == "1" ]] && echo "${currentInstallProtocolType}" | grep -q 0; then
 			echoContent yellow " ---> 通用格式(VLESS+TCP+TLS/xtls-rprx-direct)"
 			echoContent green "    vless://${id}@${host}:${port}?encryption=none&security=xtls&type=tcp&host=${host}&headerType=none&sni=${host}&flow=xtls-rprx-direct#${email}\n"
 
@@ -2368,7 +2369,7 @@ EOF
 			echoContent yellow " ---> 二维码 VLESS(VLESS+TCP+TLS/xtls-rprx-splice)"
 			echoContent green "    https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=vless%3A%2F%2F${id}%40${host}%3A${port}%3Fencryption%3Dnone%26security%3Dxtls%26type%3Dtcp%26${host}%3D${host}%26headerType%3Dnone%26sni%3D${host}%26flow%3Dxtls-rprx-splice%23${email}\n"
 
-		elif [[ "${coreInstallType}" == "2" || "${coreInstallType}" == "3" ]]; then
+		elif [[ "${coreInstallType}" == 2 || "${coreInstallType}" == "3" ]]; then
 			echoContent yellow " ---> 通用格式(VLESS+TCP+TLS)"
 			echoContent green "    vless://${id}@${host}:${port}?security=tls&encryption=none&host=${host}&headerType=none&type=tcp#${email}\n"
 
@@ -2410,12 +2411,11 @@ EOF
 
 	elif [[ "${type}" == "vmessws" ]]; then
 
-		qrCodeBase64Default=$(echo -n '{"port":"'${port}'","ps":"'"${email}"'","tls":"tls","id":"'"${id}"'","aid":"0","v":"2","host":"'"${host}"'","type":"none","path":"/'"${path}"'","net":"ws","add":"'"${add}"'","allowInsecure":0,"method":"none","peer":"'"${host}"'","sni":"'${host}'"}' | sed 's#/#\\\/#g' | base64)
+		qrCodeBase64Default=$(echo -n "{\"port\":${port},\"ps\":\"${email}\",\"tls\":\"tls\",\"id\":\"${id}\",\"aid\":0,\"v\":2,\"host\":\"${host}\",\"type\":\"none\",\"path\":\"/${path}\",\"net\":\"ws\",\"add\":\"${add}\",\"allowInsecure\":0,\"method\":\"none\",\"peer\":\"${host}\",\"sni\":\"${host}\"}" | sed 's#/#\\\/#g' | base64)
 		qrCodeBase64Default="${qrCodeBase64Default// /}"
 
-
 		echoContent yellow " ---> 通用json(VMess+WS+TLS)"
-		echoContent green "    {"port":"'${port}'","ps":'"${ps}"',"tls":"tls","id":'"${id}"',"aid":"0","v":"2","host":'${host}',"type":"none","path":"/'${path}'","net":"ws","add":"'${add}'","allowInsecure":0,"method":"none","peer":"'${host}'","sni":"'${host}'"}\n"
+		echoContent green "    {\"port\":${port},\"ps\":\"${email}\",\"tls\":\"tls\",\"id\":\"${id}\",\"aid\":0,\"v\":2,\"host\":'${host}',\"type\":\"none\",\"path\":\"${path}\",\"net\":\"ws\",\"add\":\"${add}\",\"allowInsecure\":0,\"method\":\"none\",\"peer\":\"${host}\",\"sni\":\"${host}\"}\n"
 		echoContent yellow " ---> 通用vmess(VMess+WS+TLS)链接"
 		echoContent green "    vmess://${qrCodeBase64Default}\n"
 		echoContent yellow " ---> 二维码 vmess(VMess+WS+TLS)"
@@ -2427,25 +2427,12 @@ EOF
 
 	elif [[ "${type}" == "vmesstcp" ]]; then
 
-#		echoContent yellow " ---> 通用格式[新版，推荐]"
-#
-#		echoContent green "    vmess://tcp+tls:2e6257c5-1402-41a6-a96d-1e0bdad78159-0@vu3.s83h.xyz:443/?type=http&tlsServerName=vu3.s83h.xyz#vu3.s83h.xyz_vmess_tcp"
-#		echoContent green "    vmess://tcp+tls:${id//\"/}-0@${add}:${port}/?type=http&path=/${path}&tlsServerName=${host}&alpn=http1.1#${ps//\"/}\n"
-#
-#		echoContent yellow " ---> 格式化明文(vmess+http+tls)"
-#		echoContent green "协议类型：vmess，地址：${host}，端口：${port}，用户ID：${id}，安全：tls，传输方式：http，账户名:${ps}\n"
-#		cat <<EOF >>"/etc/v2ray-agent/subscribe_tmp/${subAccount}"
-#vmess://http+tls:${id}-0@${add}:${port}/?path=/${path}&tlsServerName=${host}&alpn=http1.1#${ps}
-#EOF
-#		echoContent yellow " ---> 二维码 vmess(http+tls)"
-#		echoContent green "    https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=vmess%3A%2F%2Fhttp%2Btls%3A${id}-0%40add%3A${port}%2F%3Fpath%3D%2F${path}%26tlsServerName%3D${host}%26alpn%3Dhttp1.1%23%24%7B${ps}%7D\n"
-
-		echoContent red path:${path}
-		qrCodeBase64Default=$(echo -n '{"add":"'${add}'","aid":"0","host":"'${host}'","id":'"${id}"',"net":"tcp","path":"/'${path}'","port":"'${port}'","ps":'${ps}',"scy":"none","sni":"'${host}'","tls":"tls","v":"2","type":"http","allowInsecure":0,"peer":"'${host}'","obfs":"http","obfsParam":"'${host}'"}'  | base64)
-		qrCodeBase64Default=$(echo ${qrCodeBase64Default} | sed 's/ //g')
+		echoContent red "path:${path}"
+		qrCodeBase64Default=$(echo -n "{\"add\":\"${add}\",\"aid\":0,\"host\":\"${host}\",\"id\":\"${id}\",\"net\":\"tcp\",\"path\":\"${path}\",\"port\":${port},\"ps\":\"${email}\",\"scy\":\"none\",\"sni\":\"${host}\",\"tls\":\"tls\",\"v\":2,\"type\":\"http\",\"allowInsecure\":0,\"peer\":\"${host}\",\"obfs\":\"http\",\"obfsParam\":\"${host}\"}"  | base64)
+		qrCodeBase64Default="${qrCodeBase64Default// /}"
 
 		echoContent yellow " ---> 通用json(VMess+TCP+TLS)"
-		echoContent green '    {"port":"'${port}'","ps":'${ps}',"tls":"tls","id":'"${id}"',"aid":"0","v":"2","host":"'${host}'","type":"http","path":"/'${path}'","net":"http","add":"'${add}'","allowInsecure":0,"method":"post","peer":"'${host}'","obfs":"http","obfsParam":"'${host}'"}\n'
+		echoContent green "    {\"port\":'${port}',\"ps\":\"${email}\",\"tls\":\"tls\",\"id\":\"${id}\",\"aid\":0,\"v\":2,\"host\":\"${host}\",\"type\":\"http\",\"path\":\"${path}\",\"net\":\"http\",\"add\":\"${add}\",\"allowInsecure\":0,\"method\":\"post\",\"peer\":\"${host}\",\"obfs\":\"http\",\"obfsParam\":\"${host}\"}\n"
 		echoContent yellow " ---> 通用vmess(VMess+TCP+TLS)链接"
 		echoContent green "    vmess://${qrCodeBase64Default}\n"
 
@@ -2530,6 +2517,7 @@ EOF
 	fi
 
 }
+
 # 账号
 showAccounts() {
 	readInstallType
@@ -2545,7 +2533,7 @@ showAccounts() {
 			jq .inbounds[0].settings.clients ${configPath}02_trojan_TCP_inbounds.json | jq -c '.[]' | while read -r user; do
 				echoContent skyBlue "\n ---> 帐号：$(echo "${user}" | jq -r .email )_$(echo "${user}" | jq -r .password)"
 				echo
-				defaultBase64Code trojanTCPXTLS "$(echo "${user}" | jq -r .email)" "$(echo "${user}" | jq -r .password)" "${currentHost}:${currentPort}" ${currentHost}
+				defaultBase64Code trojanTCPXTLS "$(echo "${user}" | jq -r .email)" "$(echo "${user}" | jq -r .password)" "${currentHost}:${currentPort}" "${currentHost}"
 			done
 
 		else
@@ -2553,7 +2541,7 @@ showAccounts() {
 			jq .inbounds[0].settings.clients ${configPath}02_VLESS_TCP_inbounds.json | jq -c '.[]' | while read -r user; do
 				echoContent skyBlue "\n ---> 帐号：$(echo "${user}" | jq -r .email )_$(echo "${user}" | jq -r .id)"
 				echo
-				defaultBase64Code vlesstcp "$(echo "${user}" | jq -r .email)" "$(echo "${user}" | jq -r .id)" "${currentHost}:${currentPort}" ${currentHost}
+				defaultBase64Code vlesstcp "$(echo "${user}" | jq -r .email)" "$(echo "${user}" | jq -r .id)" "${currentHost}:${currentPort}" "${currentHost}"
 			done
 		fi
 
@@ -2570,7 +2558,7 @@ showAccounts() {
 					echoContent yellow "Xray的0-RTT path后面会有?ed=2048，不兼容以v2ray为核心的客户端，请手动删除?ed=2048后使用\n"
 					path="${currentPath}ws?ed=2048"
 				fi
-				defaultBase64Code vlessws "$(echo "${user}" | jq -r .email)" "$(echo "${user}" | jq -r .id)" "${currentHost}:${currentPort}" ${path} ${currentAdd}
+				defaultBase64Code vlessws "$(echo "${user}" | jq -r .email)" "$(echo "${user}" | jq -r .id)" "${currentHost}:${currentPort}" "${path}" "${currentAdd}"
 			done
 		fi
 
@@ -2584,7 +2572,7 @@ showAccounts() {
 			jq .inbounds[0].settings.clients ${configPath}05_VMess_WS_inbounds.json | jq -c '.[]' | while read -r user; do
 				echoContent skyBlue "\n ---> 帐号：$(echo "${user}" | jq -r .email )_$(echo "${user}" | jq -r .id)"
 				echo
-				defaultBase64Code vmessws "$(echo "${user}" | jq -r .email)" "$(echo "${user}" | jq -r .id)" "${currentHost}:${currentPort}" ${path} ${currentAdd}
+				defaultBase64Code vmessws "$(echo "${user}" | jq -r .email)" "$(echo "${user}" | jq -r .id)" "${currentHost}:${currentPort}" "${path}" "${currentAdd}"
 			done
 		fi
 
@@ -2592,11 +2580,12 @@ showAccounts() {
 		if echo ${currentInstallProtocolType} | grep -q 5; then
 			echoContent skyBlue "\n=============================== VLESS gRPC TLS CDN ===============================\n"
 			echoContent red "\n --->gRPC目前处于测试阶段，可能对你使用的客户端不兼容，如不能使用请忽略"
-			local serviceName=$(jq -r .inbounds[0].streamSettings.grpcSettings.serviceName ${configPath}06_VLESS_gRPC_inbounds.json)
+			local serviceName
+			serviceName=$(jq -r .inbounds[0].streamSettings.grpcSettings.serviceName ${configPath}06_VLESS_gRPC_inbounds.json)
 			jq .inbounds[0].settings.clients ${configPath}06_VLESS_gRPC_inbounds.json | jq -c '.[]' | while read -r user; do
 				echoContent skyBlue "\n ---> 帐号：$(echo "${user}" | jq -r .email )_$(echo "${user}" | jq -r .id)"
 				echo
-				defaultBase64Code vlessgrpc "$(echo "${user}" | jq -r .email)" "$(echo "${user}" | jq -r .id)" "${currentHost}:${currentPort}" ${serviceName} ${currentAdd}
+				defaultBase64Code vlessgrpc "$(echo "${user}" | jq -r .email)" "$(echo "${user}" | jq -r .id)" "${currentHost}:${currentPort}" "${serviceName}" "${currentAdd}"
 			done
 		fi
 	fi
@@ -2619,7 +2608,7 @@ showAccounts() {
 		jq .inbounds[0].settings.clients ${configPath}04_trojan_gRPC_inbounds.json | jq -c '.[]' | while read -r user; do
 			echoContent skyBlue "\n ---> 帐号：$(echo "${user}" | jq -r .email )_$(echo "${user}" | jq -r .password)"
 			echo
-			defaultBase64Code trojangrpc "$(echo "${user}" | jq -r .email)" "$(echo "${user}" | jq -r .password)" "${currentHost}:${currentPort}" ${serviceName} ${currentAdd}
+			defaultBase64Code trojangrpc "$(echo "${user}" | jq -r .email)" "$(echo "${user}" | jq -r .password)" "${currentHost}:${currentPort}" "${serviceName}" "${currentAdd}"
 		done
 	fi
 
@@ -2683,7 +2672,7 @@ addCorePort() {
 		if [[ -n "${newPort}" ]]; then
 
 			while read -r port; do
-				cat <<EOF >${configPath}02_dokodemodoor_inbounds_${port}.json
+				cat <<EOF >"${configPath}02_dokodemodoor_inbounds_${port}.json"
 {
   "inbounds": [
     {
@@ -2711,7 +2700,8 @@ EOF
 		ls ${configPath} | grep dokodemodoor | awk -F "[_]" '{print $4}' | awk -F "[.]" '{print ""NR""":"$1}'
 		read -r -p "请输入要删除的端口编号：" portIndex
 
-		local dokoConfig=$(ls ${configPath} | grep dokodemodoor | awk '{print ""NR""":"$1}' | grep ${portIndex}":")
+		local dokoConfig=
+		dokoConfig$(ls ${configPath} | grep dokodemodoor | awk '{print ""NR""":"$1}' | grep "${portIndex}:")
 		if [[ -n "${dokoConfig}" ]]; then
 			rm "${configPath}/$(echo "${dokoConfig}" | awk -F "[:]" '{print $2}')"
 			reloadCore
@@ -2767,7 +2757,7 @@ updateV2RayCDN() {
 	# todo 重构此方法
 	echoContent skyBlue "\n进度 $1/${totalProgress} : 修改CDN节点"
 
-	if [[ -n ${currentAdd} ]]; then
+	if [[ -n "${currentAdd}" ]]; then
 		echoContent red "=============================================================="
 		echoContent yellow "1.CNAME www.digitalocean.com"
 		echoContent yellow "2.CNAME www.cloudflare.com"
@@ -2791,7 +2781,7 @@ updateV2RayCDN() {
 		esac
 
 		if [[ -n ${setDomain} ]]; then
-			if [[ -n ${currentAdd} ]]; then
+			if [[ -n "${currentAdd}" ]]; then
 				sed -i "s/\"${currentAdd}\"/\"${setDomain}\"/g" "$(grep "${currentAdd}" -rl ${configPath}${frontingType}.json)"
 			fi
 			if [[ $(jq -r .inbounds[0].settings.clients[0].add ${configPath}${frontingType}.json) == ${setDomain} ]]; then
@@ -2833,10 +2823,9 @@ customUUID() {
 		if [[ -z "${currentCustomUUID}" ]]; then
 			echoContent red " ---> UUID不可为空"
 		else
-			local repeat=
 			jq -r -c '.inbounds[0].settings.clients[].id' ${configPath}${frontingType}.json | while read -r line; do
 				if [[ "${line}" == "${currentCustomUUID}" ]]; then
-					echo repeat >/tmp/v2ray-agent
+					echo >/tmp/v2ray-agent
 				fi
 			done
 			if [[ -f "/tmp/v2ray-agent" && -n $(cat /tmp/v2ray-agent) ]]; then
@@ -2858,10 +2847,9 @@ customUserEmail() {
 		if [[ -z "${currentCustomEmail}" ]]; then
 			echoContent red " ---> email不可为空"
 		else
-			local repeat=
 			jq -r -c '.inbounds[0].settings.clients[].email' ${configPath}${frontingType}.json | while read -r line; do
 				if [[ "${line}" == "${currentCustomEmail}" ]]; then
-					echo repeat >/tmp/v2ray-agent
+					echo >/tmp/v2ray-agent
 				fi
 			done
 			if [[ -f "/tmp/v2ray-agent" && -n $(cat /tmp/v2ray-agent) ]]; then
@@ -3071,7 +3059,7 @@ updateV2RayAgent() {
 	echoContent yellow " ---> 请手动执行[vasma]打开脚本"
 	echoContent green " ---> 当前版本:${version}\n"
 	echoContent yellow "如更新不成功，请手动执行下面命令\n"
-	echoContent skyBlue "wget -P /root -N --no-check-certificate "https://raw.githubusercontent.com/mack-a/v2ray-agent/master/install.sh" && chmod 700 /root/install.sh && /root/install.sh"
+	echoContent skyBlue "wget -P /root -N --no-check-certificate https://raw.githubusercontent.com/mack-a/v2ray-agent/master/install.sh && chmod 700 /root/install.sh && /root/install.sh"
 	echo
 	exit 0
 }
@@ -3184,7 +3172,7 @@ EOF
 # 脚本快捷方式
 aliasInstall() {
 
-	if [[ -f "$HOME/install.sh" ]] && [[ -d "/etc/v2ray-agent" ]] && grep <$HOME/install.sh -q "作者：mack-a"; then
+	if [[ -f "$HOME/install.sh" ]] && [[ -d "/etc/v2ray-agent" ]] && grep <"$HOME/install.sh" -q "作者：mack-a"; then
 		mv "$HOME/install.sh" /etc/v2ray-agent/install.sh
 		local vasmaType=
 		if [[ -d "/usr/bin/" ]] ; then
@@ -3407,16 +3395,16 @@ unInstallOutbounds(){
 # 卸载嗅探
 unInstallSniffing(){
 	ls ${configPath}|grep inbounds.json|while read -r inbound;do
-		sniffing=$(jq -r 'del(.inbounds[0].sniffing)' ${configPath}${inbound})
-		echo "${sniffing}" |jq . >${configPath}${inbound}
+		sniffing=$(jq -r 'del(.inbounds[0].sniffing)' "${configPath}${inbound}")
+		echo "${sniffing}" |jq . >"${configPath}${inbound}"
 	done
 }
 
 # 安装嗅探
 installSniffing(){
 	ls ${configPath}|grep inbounds.json|while read -r inbound;do
-		sniffing=$(jq -r '.inbounds[0].sniffing = {"enabled":true,"destOverride":["http","tls"]}' ${configPath}${inbound})
-		echo "${sniffing}" |jq . >${configPath}${inbound}
+		sniffing=$(jq -r '.inbounds[0].sniffing = {"enabled":true,"destOverride":["http","tls"]}' "${configPath}${inbound}")
+		echo "${sniffing}" |jq . >"${configPath}${inbound}"
 	done
 }
 
