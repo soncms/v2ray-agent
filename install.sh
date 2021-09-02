@@ -2697,11 +2697,10 @@ EOF
 		fi
 	elif [[ "${selectNewPortType}" == "2" ]]; then
 
-		ls ${configPath} | grep dokodemodoor | awk -F "[_]" '{print $4}' | awk -F "[.]" '{print ""NR""":"$1}'
+		find ${configPath} -name "*dokodemodoor*"|awk -F "[c][o][n][f][/]" '{print ""NR""":"$2}'
 		read -r -p "请输入要删除的端口编号：" portIndex
-
-		local dokoConfig=
-		dokoConfig$(ls ${configPath} | grep dokodemodoor | awk '{print ""NR""":"$1}' | grep "${portIndex}:")
+		local dokoConfig
+		dokoConfig=$(find ${configPath} -name "*dokodemodoor*"|awk -F "[c][o][n][f][/]" '{print ""NR""":"$2}'|grep "${portIndex}:")
 		if [[ -n "${dokoConfig}" ]]; then
 			rm "${configPath}/$(echo "${dokoConfig}" | awk -F "[:]" '{print $2}')"
 			reloadCore
@@ -2784,7 +2783,7 @@ updateV2RayCDN() {
 			if [[ -n "${currentAdd}" ]]; then
 				sed -i "s/\"${currentAdd}\"/\"${setDomain}\"/g" "$(grep "${currentAdd}" -rl ${configPath}${frontingType}.json)"
 			fi
-			if [[ $(jq -r .inbounds[0].settings.clients[0].add ${configPath}${frontingType}.json) == ${setDomain} ]]; then
+			if [[ $(jq -r .inbounds[0].settings.clients[0].add ${configPath}${frontingType}.json) == "${setDomain}" ]]; then
 				echoContent green " ---> CDN修改成功"
 				reloadCore
 			else
@@ -3053,7 +3052,8 @@ updateV2RayAgent() {
 	fi
 
 	sudo chmod 700 /etc/v2ray-agent/install.sh
-	local version=$(cat /etc/v2ray-agent/install.sh | grep '当前版本：v' | awk -F "[v]" '{print $2}' | tail -n +2 | head -n 1 | awk -F "[\"]" '{print $1}')
+	local version
+	version=$(cat "/etc/v2ray-agent/install.sh" | grep '当前版本：v' | awk -F "[v]" '{print $2}' | tail -n +2 | head -n 1 | awk -F "[\"]" '{print $1}')
 
 	echoContent green "\n ---> 更新完毕"
 	echoContent yellow " ---> 请手动执行[vasma]打开脚本"
@@ -3394,7 +3394,8 @@ unInstallOutbounds(){
 
 # 卸载嗅探
 unInstallSniffing(){
-	ls ${configPath}|grep inbounds.json|while read -r inbound;do
+
+	find ${configPath} -name "*inbounds.json*"|awk -F "[c][o][n][f][/]" '{print $2}'|while read -r inbound;do
 		sniffing=$(jq -r 'del(.inbounds[0].sniffing)' "${configPath}${inbound}")
 		echo "${sniffing}" |jq . >"${configPath}${inbound}"
 	done
@@ -3402,7 +3403,8 @@ unInstallSniffing(){
 
 # 安装嗅探
 installSniffing(){
-	ls ${configPath}|grep inbounds.json|while read -r inbound;do
+
+	find ${configPath} -name "*inbounds.json*"|awk -F "[c][o][n][f][/]" '{print $2}'|while read -r inbound;do
 		sniffing=$(jq -r '.inbounds[0].sniffing = {"enabled":true,"destOverride":["http","tls"]}' "${configPath}${inbound}")
 		echo "${sniffing}" |jq . >"${configPath}${inbound}"
 	done
@@ -3473,7 +3475,8 @@ EOF
 		fi
 		unInstallOutbounds warp-socks-out
 
-		local outbounds=$(jq -r '.outbounds += [{"protocol":"socks","settings":{"servers":[{"address":"127.0.0.1","port":31303}]},"tag":"warp-socks-out"}]' ${configPath}10_ipv4_outbounds.json)
+		local outbounds
+		outbounds=$(jq -r '.outbounds += [{"protocol":"socks","settings":{"servers":[{"address":"127.0.0.1","port":31303}]},"tag":"warp-socks-out"}]' ${configPath}10_ipv4_outbounds.json)
 
 		echo "${outbounds}"|jq . >${configPath}10_ipv4_outbounds.json
 
@@ -3558,7 +3561,8 @@ setDokodemoDoorUnblockNetflixOutbounds() {
 			unInstallRouting netflix-80
 			unInstallRouting netflix-443
 
-			local routing=$(jq -r '.routing.rules += [{"type":"field","port":80,"domain":["ip.sb","geosite:netflix"],"outboundTag":"netflix-80"},{"type":"field","port":443,"domain":["ip.sb","geosite:netflix"],"outboundTag":"netflix-443"}]' ${configPath}09_routing.json)
+			local routing
+			routing=$(jq -r '.routing.rules += [{"type":"field","port":80,"domain":["ip.sb","geosite:netflix"],"outboundTag":"netflix-80"},{"type":"field","port":443,"domain":["ip.sb","geosite:netflix"],"outboundTag":"netflix-443"}]' ${configPath}09_routing.json)
 			echo "${routing}"|jq . >${configPath}09_routing.json
 		else
 			cat <<EOF >${configPath}09_routing.json
@@ -3704,17 +3708,21 @@ EOF
   }
 }
 EOF
-		local ips=
-		while read -r ip; do
-			if [[ -z ${ips} ]];then
-				ips=\"${ip}\"
-			else
-				ips=${ips},\"${ip}\"
-			fi
-		done< <(echo ${setIPs}|tr ',' '\n')
 
-		local routing=$(jq -r '.routing.rules[0].source += ['${ips}']' ${configPath}09_routing.json)
-		echo "${routing}" | jq . >${configPath}09_routing.json
+		oldIFS="${IFS}"
+		IFS=","
+		# shellcheck disable=SC2206
+		sourceIPs=(${setIPs})
+		IFS="${oldIFS}"
+
+		local routing
+
+		for value in "${sourceIPs[@]}"
+		do
+			routing=$(jq -r ".routing.rules[0].source += [\"${value}\"]" ${configPath}09_routing.json)
+			echo "${routing}" | jq . >${configPath}09_routing.json
+		done
+
 		reloadCore
 		echoContent green " ---> 添加落地机入站解锁Netflix成功"
 		exit 0
@@ -4123,9 +4131,11 @@ subscribe() {
 		mv /etc/v2ray-agent/subscribe_tmp/* /etc/v2ray-agent/subscribe/
 
 		if [[ -n $(ls /etc/v2ray-agent/subscribe) ]]; then
-			ls /etc/v2ray-agent/subscribe | while read -r email; do
-				local base64Result=$(base64 -w 0 /etc/v2ray-agent/subscribe/${email})
-				echo ${base64Result} >"/etc/v2ray-agent/subscribe/${email}"
+			find /etc/v2ray-agent/subscribe | while read -r email; do
+				email=$(echo "${email}"|awk -F "[s][u][b][s][c][r][i][b][e][/]" '{print $2}')
+				local base64Result
+				base64Result=$(base64 -w 0 "/etc/v2ray-agent/subscribe/${email}")
+				echo "${base64Result}" >"/etc/v2ray-agent/subscribe/${email}"
 				echoContent skyBlue "--------------------------------------------------------------"
 				echoContent yellow "email：$(echo "${email}" | awk -F "[_]" '{print $1}')\n"
 				echoContent yellow "url：https://${currentHost}/s/${email}\n"
